@@ -39,12 +39,20 @@ class StandByActivity : ComponentActivity() {
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         )
-        setContent { StandByClock(onClose = ::finish) }
+        setContent {
+            StandByClock(onClose = ::finish, onBrightness = { level ->
+                val params = window.attributes
+                params.screenBrightness = level
+                window.attributes = params
+            })
+        }
     }
 }
 
 @Composable
-private fun StandByClock(onClose: () -> Unit) {
+private fun StandByClock(onClose: () -> Unit, onBrightness: (Float) -> Unit) {
+    var brightness by remember { mutableFloatStateOf(0.32f) }
+    LaunchedEffect(brightness) { onBrightness(brightness) }
     val context = LocalContext.current
     val repo = remember(context) { DeviceRepository(context) }
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -65,8 +73,10 @@ private fun StandByClock(onClose: () -> Unit) {
             )
         )
     ) {
+        // Shift the content subtly each minute to reduce OLED static-image retention.
+        val shift = ((now / 60_000L) % 5L).toInt() - 2
         Column(
-            Modifier.align(Alignment.Center),
+            Modifier.align(Alignment.Center).offset(x = (shift * 2).dp, y = (shift * -2).dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("AETHER STANDBY", fontSize = 11.sp,
@@ -79,6 +89,18 @@ private fun StandByClock(onClose: () -> Unit) {
             Text(
                 "${if (battery.isCharging) "⚡ " else ""}${battery.batteryPercent}%",
                 fontSize = 16.sp, color = Color(0xFF9AE0CC)
+            )
+        }
+        Column(
+            Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Brightness", fontSize = 11.sp, color = Color.White.copy(alpha = .7f))
+            Slider(
+                value = brightness,
+                onValueChange = { brightness = it },
+                valueRange = 0.06f..0.85f,
+                modifier = Modifier.width(180.dp)
             )
         }
         FilledTonalButton(
