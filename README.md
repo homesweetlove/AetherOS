@@ -9,6 +9,7 @@ AetherOS is a **non-root Galaxy customization and diagnostics app**, inspired by
 - **Aether Flow live wallpaper**: native animated gradient, parallax on home paging, invisible-state pause, reduced refresh in power saving mode.
 - **StandBy OLED care**: in-app brightness slider and subtle minute-by-minute clock position shift. This remains an app activity, not Samsung AOD.
 
+- **Quick Settings tile**: add “Aether AI” to the Android notification shade using Edit tiles, then tap to open the assistant without an always-listening service.
 - **Aether AI tab**: Korean text commands to propose KakaoTalk/SMS drafts, launch an exact-match installed app, or open Android settings.
 - **On-device natural language**: deterministic Korean parser first; on supported Gemini Nano (ML Kit GenAI Prompt / AICore) devices, tries local generative parsing for more complex requests. No cloud model and no general reasoning guaranteed on unsupported phones.
 - **Microphone**: explicit tap-to-talk; uses Android on-device SpeechRecognizer if available. No background microphone or cloud fallback.
