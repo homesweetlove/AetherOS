@@ -1,6 +1,7 @@
 package dev.ideonq.aetheros
 
 import android.content.Intent
+import dev.ideonq.aetheros.agent.AssistantScreen
 import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
@@ -45,6 +46,7 @@ class MainActivity : ComponentActivity() {
 private data class NavigationItem(val glyph: String, val name: String)
 private val navigation = listOf(
     NavigationItem("◈", "Home"),
+    NavigationItem("✧", "AI"),
     NavigationItem("✦", "Style"),
     NavigationItem("◉", "Optimize"),
     NavigationItem("▦", "Apps"),
@@ -91,8 +93,9 @@ private fun AetherApp(resumeTick: Int) {
             when (tab) {
                 0 -> OverviewScreen(snapshot, profile, {
                     context.startActivity(Intent(context, StandByActivity::class.java))
-                }, { tab = 1 }, { tab = 2 })
-                1 -> AppearanceScreen(deviceRepo, useGlass, onGlassChanged = {
+                }, { tab = 2 }, { tab = 3 })
+                1 -> AssistantScreen(resumeTick)
+                2 -> AppearanceScreen(deviceRepo, useGlass, onGlassChanged = {
                     useGlass = it
                     preferences.glassEffects = it
                 }, onStandBy = {
@@ -100,11 +103,11 @@ private fun AetherApp(resumeTick: Int) {
                 }, onLauncher = {
                     context.startActivity(Intent(context, LauncherActivity::class.java))
                 })
-                2 -> OptimizeScreen(snapshot, profile, onProfileChange = {
+                3 -> OptimizeScreen(snapshot, profile, onProfileChange = {
                     profile = it
                     preferences.profile = it
                 }, deviceRepo)
-                3 -> AppInsightsScreen(deviceRepo, resumeTick + refresh)
+                4 -> AppInsightsScreen(deviceRepo, resumeTick + refresh)
                 else -> MoreScreen(snapshot, deviceRepo, onReset = {
                     preferences.reset()
                     profile = preferences.profile
