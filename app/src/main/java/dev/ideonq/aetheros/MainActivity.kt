@@ -295,6 +295,9 @@ private fun AppearanceScreen(
         FeatureTile("❖", "Lock screen & motion",
             "Good Lock의 LockStar, ClockFace, Wonderland 등을 사용해요.",
             "Good Lock 수동 설정", onClick = repo::openGoodLock)
+        FeatureTile("✺", "Aether Flow wallpaper",
+            "저부하 움직임과 홈 화면 패럴랙스를 제공하는 AetherOS 라이브 배경화면.",
+            "Android 라이브 배경화면 선택", onClick = repo::openAetherWallpaper)
         FeatureTile("▣", "Wallpaper",
             "갤럭시 배경화면 선택기에서 직접 적용해요.",
             "사용자 승인 필요", onClick = repo::openWallpaper)
