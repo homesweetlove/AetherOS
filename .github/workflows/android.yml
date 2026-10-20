@@ -34,3 +34,17 @@ jobs:
           name: AetherOS-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+
+  gateway-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Node gateway
+        working-directory: gateway
+        run: |
+          node --check server.mjs
+          node --test

@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.core.content.ContextCompat
 import dev.ideonq.aetheros.AetherColors
 import dev.ideonq.aetheros.GlassCard
@@ -34,12 +35,19 @@ fun AssistantScreen(resumeTick: Int) {
     val context = LocalContext.current
     val actions = remember(context) { PhoneActions(context) }
     val interpreter = remember { NanoInterpreter() }
+    val gatewaySettings = remember(context) { GatewaySettings(context) }
+    val gateway = remember(gatewaySettings) { GptGatewayClient(gatewaySettings) }
     val voice = remember(context) { LocalVoice(context) }
     DisposableEffect(voice) { onDispose { voice.cancel() } }
     val scope = rememberCoroutineScope()
 
     var prompt by remember { mutableStateOf("") }
     var pending by remember { mutableStateOf<AgentCommand?>(null) }
+    var plan by remember { mutableStateOf<AgentPlan?>(null) }
+    var agentMode by remember { mutableStateOf(gatewaySettings.mode) }
+    var gatewayAddress by remember { mutableStateOf(gatewaySettings.endpoint) }
+    var deviceTokenText by remember { mutableStateOf("") }
+    var hasDeviceToken by remember { mutableStateOf(gatewaySettings.hasToken()) }
     var engine by remember { mutableStateOf("기본 명령은 오프라인으로 분석합니다.") }
     var notice by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
@@ -145,13 +153,24 @@ fun AssistantScreen(resumeTick: Int) {
             Spacer(Modifier.height(9.dp))
             OutlinedTextField(
                 value = prompt,
-                onValueChange = { prompt = it.take(600); pending = null },
+                onValueChange = { prompt = it.take(600); pending = null; plan = null },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 4,
                 placeholder = { Text("엄마한테 카톡으로 오늘 늦는다고 보내줘") },
                 shape = RoundedCornerShape(18.dp)
             )
+            Spacer(Modifier.height(12.dp))
+            Text("AI 엔진", fontSize = 12.sp, color = AetherColors.muted)
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                AgentMode.entries.forEach { option ->
+                    FilterChip(
+                        selected = agentMode == option,
+                        onClick = { agentMode = option; gatewaySettings.mode = option },
+                        label = { Text(option.name, fontSize = 12.sp) }
+                    )
+                }
+            }
             Spacer(Modifier.height(9.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(7.dp),
                 verticalAlignment = Alignment.CenterVertically) {
@@ -159,14 +178,41 @@ fun AssistantScreen(resumeTick: Int) {
                     onClick = {
                         busy = true
                         pending = null
+                        plan = null
                         notice = ""
                         scope.launch {
                             try {
-                                val result = interpreter.interpret(prompt)
-                                pending = result.first
-                                engine = result.second
-                                if (pending == AgentCommand.Unrecognized) {
+                                val rule = AgentCommandParser.parse(prompt)
+                                val localFirst = agentMode == AgentMode.LOCAL ||
+                                    (agentMode == AgentMode.HYBRID && rule != AgentCommand.Unrecognized)
+                                if (localFirst) {
+                                    val result = interpreter.interpret(prompt)
+                                    pending = result.first
+                                    engine = result.second
+                                } else if (GatewaySettings.validEndpoint(gatewaySettings.endpoint) && gatewaySettings.hasToken()) {
+                                    val result = gateway.plan(prompt)
+                                    plan = result
+                                    engine = "GPT · 본인 서버를 통해 명령 분석"
+                                    if (result.actions.isEmpty() && result.reply.isBlank()) {
+                                        notice = "AI의 응답이 비어 있어요."
+                                    }
+                                } else if (agentMode == AgentMode.HYBRID) {
+                                    val result = interpreter.interpret(prompt)
+                                    pending = result.first
+                                    engine = result.second + " · 서버 미설정"
+                                } else {
+                                    notice = "먼저 아래에서 HTTPS 서버 주소와 디바이스 토큰을 설정해 주세요."
+                                }
+                                if (pending == AgentCommand.Unrecognized && notice.isBlank()) {
                                     notice = "지원되는 명령으로 바꿔서 다시 말해 주세요."
+                                }
+                            } catch (e: Exception) {
+                                if (agentMode == AgentMode.HYBRID) {
+                                    val result = interpreter.interpret(prompt)
+                                    pending = result.first
+                                    engine = result.second + " · GPT 연결 실패"
+                                } else {
+                                    notice = "GPT 연결 오류: " + (e.message ?: "네트워크를 확인해 주세요.").take(130)
                                 }
                             } finally { busy = false }
                         }
@@ -192,6 +238,32 @@ fun AssistantScreen(resumeTick: Int) {
             }
             Spacer(Modifier.height(8.dp))
             Text(engine, fontSize = 11.sp, color = AetherColors.muted)
+        }
+        if (plan != null) {
+            Spacer(Modifier.height(12.dp))
+            GlassCard(Modifier.fillMaxWidth()) {
+                Text("GPT의 응답", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(5.dp))
+                Text(plan?.reply.orEmpty(), color = AetherColors.ink)
+                if (!plan?.actions.isNullOrEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    Text("제안된 작업 · 각 항목은 개별 승인 필요",
+                        fontSize = 12.sp, color = AetherColors.muted)
+                    plan?.actions?.forEachIndexed { index, command ->
+                        OutlinedButton(
+                            onClick = { pending = command },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("${index + 1}. " + when (command) {
+                                is AgentCommand.Message -> "${command.recipient} · ${if (command.channel == Channel.KAKAO) "카톡" else "문자"} 초안"
+                                is AgentCommand.OpenApp -> "${command.app} 실행"
+                                is AgentCommand.OpenSettings -> "${command.setting} 열기"
+                                else -> "지원하지 않음"
+                            })
+                        }
+                    }
+                }
+            }
         }
         if (pending != null && pending != AgentCommand.Unrecognized) {
             Spacer(Modifier.height(12.dp))
@@ -242,6 +314,57 @@ fun AssistantScreen(resumeTick: Int) {
         }
         Spacer(Modifier.height(12.dp))
         GlassCard(Modifier.fillMaxWidth()) {
+            Text("GPT 서버 연결 (선택)", fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(5.dp))
+            Text("GPT 요청은 설정한 HTTPS 서버를 통해 OpenAI로 전송됩니다. 휴대폰 연락처·화면은 자동 업로드하지 않아요.",
+                fontSize = 12.sp, color = AetherColors.muted)
+            Spacer(Modifier.height(9.dp))
+            OutlinedTextField(
+                value = gatewayAddress,
+                onValueChange = { gatewayAddress = it.take(300) },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("HTTPS Gateway URL") },
+                placeholder = { Text("https://ai.example.com/v1/plan") },
+                singleLine = true
+            )
+            Spacer(Modifier.height(7.dp))
+            OutlinedTextField(
+                value = deviceTokenText,
+                onValueChange = { deviceTokenText = it.take(512) },
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(if (hasDeviceToken) "새 디바이스 토큰 (현재 저장됨)" else "디바이스 토큰") },
+                visualTransformation = PasswordVisualTransformation(),
+                singleLine = true
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                Button(onClick = {
+                    if (!GatewaySettings.validEndpoint(gatewayAddress)) {
+                        notice = "HTTPS 주소는 /v1/plan 경로로 끝나야 해요."
+                    } else {
+                        try {
+                            if (deviceTokenText.isNotEmpty()) {
+                                gatewaySettings.saveToken(deviceTokenText)
+                                deviceTokenText = ""
+                            }
+                            gatewaySettings.endpoint = gatewayAddress
+                            hasDeviceToken = gatewaySettings.hasToken()
+                            notice = "서버 연결 설정을 저장했어요. GPT 모드로 전환해 사용하세요."
+                        } catch (_: Exception) { notice = "디바이스 토큰은 32자 이상이어야 해요." }
+                    }
+                }) { Text("저장") }
+                OutlinedButton(onClick = {
+                    gatewaySettings.clearToken()
+                    hasDeviceToken = false
+                    deviceTokenText = ""
+                    notice = "저장된 디바이스 토큰을 삭제했어요."
+                }) { Text("토큰 삭제") }
+            }
+            Text("OpenAI API 키는 절대 이곳에 입력하지 마세요. Oracle 서버에만 보관하세요.",
+                fontSize = 11.sp, color = AetherColors.muted)
+        }
+        Spacer(Modifier.height(12.dp))
+        GlassCard(Modifier.fillMaxWidth()) {
             Text("카카오톡 화면 조작 (선택)", fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(6.dp))
             Text("접근성 서비스를 켜면 카카오톡 화면에서 일치하는 이름을 찾아 초안 입력을 시도합니다. 화면이 바뀌거나 이름이 중복되면 중단합니다. 전송 버튼은 누르지 않습니다.",
@@ -259,7 +382,7 @@ fun AssistantScreen(resumeTick: Int) {
             ) { Text("접근성 권한 설정 열기") }
         }
         Spacer(Modifier.height(14.dp))
-        Text("기본 명령은 네트워크 없이 해석해요. 지원되는 기기에서는 Gemini Nano를 이용해 복잡한 표현도 기기 내부에서 분석합니다. 동작 가능한 작업만 표시하고, 발송 전 확인을 요구합니다.",
+        Text("Local 모드에서는 오프라인 명령 분석을 우선하고, Hybrid는 복잡한 요청에 GPT를 사용해요. GPT 모드에서는 명령 내용을 서버와 OpenAI로 전송하지만, 실행은 휴대폰에서 개별 확인 후 처리합니다.",
             color = AetherColors.muted, fontSize = 12.sp, lineHeight = 19.sp)
         Spacer(Modifier.height(22.dp))
     }
