@@ -18,6 +18,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: android-actions/setup-android@v4
       - name: Accept SDK licenses and install platform
         run: |
           yes | sdkmanager --licenses >/dev/null || true
