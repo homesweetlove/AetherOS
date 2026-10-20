@@ -1,6 +1,8 @@
 package dev.ideonq.aetheros
 
 import android.app.ActivityManager
+import android.app.WallpaperManager
+import android.content.ComponentName
 import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.content.Context
@@ -109,6 +111,17 @@ class DeviceRepository(private val context: Context) {
         safeStart(
             Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 .setData(Uri.parse("package:$packageName"))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+
+    fun openAetherWallpaper() {
+        safeStart(
+            Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+                .putExtra(
+                    WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                    ComponentName(context, AetherWallpaperService::class.java)
+                )
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
     }
