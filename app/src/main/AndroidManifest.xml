@@ -30,6 +30,18 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AetherOS">
         <service
+            android:name=".AetherWallpaperService"
+            android:exported="true"
+            android:label="Aether Flow Wallpaper"
+            android:permission="android.permission.BIND_WALLPAPER">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.wallpaper"
+                android:resource="@xml/aether_wallpaper" />
+        </service>
+        <service
             android:name=".agent.KakaoAssistedService"
             android:label="Aether AI · 카카오톡 초안 입력"
             android:description="@string/kakao_accessibility_description"
