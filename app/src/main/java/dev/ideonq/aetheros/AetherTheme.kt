@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -39,17 +40,20 @@ fun AetherTheme(content: @Composable () -> Unit) {
     )
 }
 
+val LocalGlassEnabled = staticCompositionLocalOf { true }
+
 @Composable
 fun GlassCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val glass = LocalGlassEnabled.current
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(27.dp),
-        color = Color.White.copy(alpha = .86f),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = .98f)),
-        shadowElevation = 7.dp
+        color = if (glass) Color.White.copy(alpha = .86f) else Color.White,
+        border = BorderStroke(1.dp, if (glass) Color.White else Color(0xFFE5EAF3)),
+        shadowElevation = if (glass) 7.dp else 0.dp
     ) {
         Column(Modifier.padding(19.dp), content = content)
     }

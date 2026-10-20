@@ -62,6 +62,7 @@ private fun AetherApp(resumeTick: Int) {
     var useGlass by remember { mutableStateOf(preferences.glassEffects) }
     val snapshot = remember(resumeTick, refresh) { deviceRepo.snapshot() }
 
+    CompositionLocalProvider(LocalGlassEnabled provides useGlass) {
     Column(
         Modifier
             .fillMaxSize()
@@ -135,6 +136,7 @@ private fun AetherApp(resumeTick: Int) {
                 }
             }
         }
+    }
     }
 }
 
