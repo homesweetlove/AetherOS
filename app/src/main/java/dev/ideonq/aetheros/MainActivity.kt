@@ -26,15 +26,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        const val OPEN_ASSISTANT_ACTION = "dev.ideonq.aetheros.action.OPEN_ASSISTANT"
+    }
     private var resumeCounter by mutableIntStateOf(0)
+    private var assistantOpenCounter by mutableIntStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (intent?.action == OPEN_ASSISTANT_ACTION) assistantOpenCounter++
         setContent {
             AetherTheme {
-                AetherApp(resumeCounter)
+                AetherApp(resumeCounter, assistantOpenCounter)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.action == OPEN_ASSISTANT_ACTION) assistantOpenCounter++
     }
 
     override fun onResume() {
@@ -54,11 +65,12 @@ private val navigation = listOf(
 )
 
 @Composable
-private fun AetherApp(resumeTick: Int) {
+private fun AetherApp(resumeTick: Int, openAssistantRequest: Int) {
     val context = LocalContext.current
     val deviceRepo = remember(context) { DeviceRepository(context) }
     val preferences = remember(context) { AetherPreferences(context) }
-    var tab by remember { mutableIntStateOf(0) }
+    var tab by remember { mutableIntStateOf(if (openAssistantRequest > 0) 1 else 0) }
+    LaunchedEffect(openAssistantRequest) { if (openAssistantRequest > 0) tab = 1 }
     var refresh by remember { mutableIntStateOf(0) }
     var profile by remember { mutableStateOf(preferences.profile) }
     var useGlass by remember { mutableStateOf(preferences.glassEffects) }
