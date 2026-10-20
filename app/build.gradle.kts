@@ -50,4 +50,5 @@ dependencies {
     implementation("com.google.mlkit:genai-prompt:1.0.0-beta4")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

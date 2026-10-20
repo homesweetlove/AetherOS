@@ -4,6 +4,16 @@
 
 AetherOS is a **non-root Galaxy customization and diagnostics app**, inspired by the fluid feel of iOS. It is **not** a custom ROM and does not claim to replace One UI.
 
+## Version 0.3 — GPT Agent & Hybrid Mode
+
+- **AI engine selector**: Local / Hybrid / GPT, directly inside the Aether AI screen.
+- **Safe multi-step plans**: GPT can propose up to four allowlisted steps, each shown as a separate preview/approval. Nothing is auto-executed.
+- **Secure Oracle gateway**: `gateway/` contains a dependency-free Node HTTPS-reverse-proxy backend powered by the official OpenAI Responses API, with strict JSON schema, action validation and rate limiting.
+- **Credential security**: OpenAI API key is stored **only on your server**. Android stores an independent, random device token encrypted with Android Keystore. HTTPS endpoint is user-configured and never automatically contacted in Local mode.
+- **Privacy**: Sending a command in GPT mode forwards the text to your endpoint and then OpenAI. Contacts, entire screens, or device files are not automatically sent.
+- **Current scope**: GPT can answer a question or propose KakaoTalk/SMS **drafts**, open an exact-match app, and navigate to a safe settings page. It cannot freely click arbitrary apps, execute OS shell commands, or send messages without user confirmation.
+- **Setup**: see [gateway/README.md](gateway/README.md). The backend requires your own API access and charges; a ChatGPT subscription alone does not automatically provide API credit.
+
 ## Version 0.2 — Visuals and Aether AI foundation
 
 - **Aether Flow live wallpaper**: native animated gradient, parallax on home paging, invisible-state pause, reduced refresh in power saving mode.
