@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">AetherOS</string>
     <string name="kakao_accessibility_description">사용자의 명시적인 요청이 있을 때만 카카오톡 화면에서 지정한 수신자와 메시지 입력란을 찾고 초안을 입력합니다. 최종 전송은 사용자가 직접 합니다. 화면 정보는 저장하거나 전송하지 않습니다.</string>
+    <string name="wallpaper_description">Aether Flow — 배터리 상태에 따라 움직임을 조절하는 은은한 라이브 배경화면</string>
 </resources>
